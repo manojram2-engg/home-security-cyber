@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Home Lab Attack Surface Snapshot</title>
+<meta name="description" content="An ethical hacking project: reconnaissance, Nmap scanning, automated Exploit-DB mapping with Python, Wireshark analysis and a CIA triad remediation report, all on an isolated home lab.">
+<meta property="og:title" content="Home Lab Attack Surface Snapshot">
+<meta property="og:description" content="Recon, scanning, automated vulnerability mapping and CIA remediation on an isolated home lab.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0e2747">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%A1%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e2747;--bg2:#143560;--line:rgba(214,230,255,.22);--ink:#e8f1ff;--mut:#a3b9d9;--amber:#ffb347;--crit:#ff7266;--high:#ffb347;--med:#7cb7ff;--ok:#5fd3a8;--code:#0a1d36;
+--hd:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--bd:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark}}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f1f6fd;--bg2:#fff;--line:#b9cbe3;--ink:#11284a;--mut:#4d6485;--amber:#9a5a00;--crit:#c4352a;--high:#a35f00;--med:#1f5fb8;--ok:#0f7f5c;--code:#e6eef9;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f1f6fd;--bg2:#fff;--line:#b9cbe3;--ink:#11284a;--mut:#4d6485;--amber:#9a5a00;--crit:#c4352a;--high:#a35f00;--med:#1f5fb8;--ok:#0f7f5c;--code:#e6eef9;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0e2747;--bg2:#143560;--line:rgba(214,230,255,.22);--ink:#e8f1ff;--mut:#a3b9d9;--amber:#ffb347;--crit:#ff7266;--high:#ffb347;--med:#7cb7ff;--ok:#5fd3a8;--code:#0a1d36;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 var(--bd);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+main{max-width:1080px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--hd);line-height:1.1;margin:0}
+h1{font-size:clamp(2.2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em;max-width:14ch}
+h2{font-size:clamp(1.6rem,3.5vw,2.2rem);font-weight:700;margin-bottom:8px}
+p{max-width:64ch;margin:.5em 0}
+.mut{color:var(--mut)}
+header.hero{display:grid;grid-template-columns:1fr 1.15fr;gap:32px;align-items:center;padding:56px 0 40px}
+.hero p.lead{font-size:1.1rem;color:var(--mut);margin:18px 0 22px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:500 .8rem var(--mono);border:1px solid var(--line);padding:4px 10px;border-radius:3px;background:var(--bg2)}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:4px;padding:10px}
+.map svg{width:100%;height:auto;display:block}
+.map .cap{font:.8rem var(--mono);color:var(--mut);padding:6px 4px 0}
+.edge{stroke:var(--mut);stroke-width:1.2;stroke-dasharray:5 5;opacity:.7}
+.go .edge{animation:scan 1.6s ease-out both}
+@keyframes scan{from{stroke-dashoffset:300;opacity:0}to{stroke-dashoffset:0;opacity:.7}}
+.node{cursor:pointer}.node rect{fill:var(--bg);stroke-width:2}.node text{fill:var(--ink);font:500 11px var(--mono)}
+.node:focus-visible rect,.node.sel rect{stroke-width:4}.node:focus{outline:none}
+section{padding:44px 0;border-top:1px solid var(--line)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:18px 0 0}
+.tabs button,.filters button,.theme{font:500 .85rem var(--bd);color:var(--ink);background:var(--bg2);border:1px solid var(--line);padding:8px 14px;border-radius:3px;cursor:pointer}
+.tabs button[aria-selected="true"],.filters button[aria-pressed="true"]{background:var(--amber);color:#14233a;border-color:var(--amber)}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.panel{background:var(--bg2);border:1px solid var(--line);border-top:0;padding:20px;display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.panel h3{font-size:1.25rem;margin-bottom:6px}
+.panel ul{margin:8px 0 0;padding-left:18px}
+.pass{font:500 .85rem var(--mono);color:var(--ok);margin-top:12px}
+pre{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:16px;overflow-x:auto;font:400 .82rem/1.6 var(--mono);margin:14px 0;max-width:100%}
+.split{display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:start}
+.out{color:var(--ok)}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--bg2)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9rem}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--mut);font-size:.82rem}
+tbody tr{cursor:pointer}tbody tr:hover,tbody tr.sel{background:rgba(255,179,71,.12)}
+.sev{font:500 .78rem var(--mono);padding:2px 8px;border-radius:3px;border:1px solid currentColor}
+.Critical{color:var(--crit)}.High{color:var(--high)}.Medium{color:var(--med)}
+.mono{font-family:var(--mono);font-size:.82rem}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0}
+.detail{margin-top:14px;background:var(--bg2);border:1px solid var(--line);border-left:4px solid var(--amber);padding:16px 18px;border-radius:4px}
+.cia{display:flex;gap:8px;margin:8px 0}
+.cia span{font:500 .8rem var(--mono);padding:4px 10px;border:1px solid var(--line);border-radius:3px;color:var(--mut)}
+.cia span.on{background:var(--crit);border-color:var(--crit);color:#1a0b0a}
+.pk td{font-family:var(--mono);font-size:.8rem;padding:6px 10px}
+.tag{color:var(--amber)}
+footer{padding:36px 0 48px;border-top:1px solid var(--line);color:var(--mut);font-size:.9rem}
+.theme{float:right}
+header.hero>*,.panel>*,.split>*{min-width:0}
+@media(max-width:820px){header.hero,.panel,.split{grid-template-columns:minmax(0,1fr)}header.hero{padding-top:32px}}
+@media(prefers-reduced-motion:reduce){.go .edge{animation:none}}
+
+.drop{display:block;border:2px dashed var(--line);border-radius:4px;padding:22px;text-align:center;background:var(--bg2);cursor:pointer;margin:14px 0;position:relative}
+.drop.over,.drop:focus-within{border-color:var(--amber)}
+.drop input{position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.btns button{font:500 .85rem var(--bd);color:var(--ink);background:var(--bg2);border:1px solid var(--line);padding:8px 14px;border-radius:3px;cursor:pointer}
+progress{width:100%;height:8px;accent-color:var(--amber)}
+.err{color:var(--crit)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.stats div{background:var(--bg2);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.stats b{display:block;font:700 1.8rem var(--hd)}
+.stats span{color:var(--mut);font-size:.85rem}
+@media(max-width:820px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+[hidden]{display:none!important}
+.row{display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin:14px 0}
+.row label{display:block;font-size:.85rem;color:var(--mut);margin-bottom:4px}
+.row input[type=text],.row select{width:100%;font:400 1rem var(--mono);padding:10px;color:var(--ink);background:var(--bg2);border:1px solid var(--line);border-radius:3px}
+.auth{display:flex;gap:10px;align-items:flex-start;margin:6px 0 14px;max-width:70ch}
+.auth input{margin-top:5px}
+#liveLog{max-height:180px;overflow:auto;white-space:pre-wrap;font-size:.78rem}
+.hist{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px}
+.hist li{display:flex;gap:8px;align-items:center;background:var(--bg2);border:1px solid var(--line);border-radius:3px;padding:8px 12px;font-size:.88rem}
+.hist li span{flex:1;min-width:0}
+.hist button{font:500 .8rem var(--bd);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:3px;padding:4px 10px;cursor:pointer}
+@media(max-width:820px){.row{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<main>
+<header class="hero">
+<div>
+<h1>What can an attacker see in my home lab?</h1>
+<p class="lead">A full ethical hacking cycle on a network I own: find the hosts, fingerprint the services, match every version to public exploits automatically, and report the risk in CIA terms.</p>
+<div class="chips"><span class="chip">Shodan</span><span class="chip">Nmap</span><span class="chip">Angry IP Scanner</span><span class="chip">searchsploit</span><span class="chip">Exploit-DB</span><span class="chip">Wireshark</span><span class="chip">Python</span></div>
+</div>
+<div class="map" id="mapWrap">
+<svg viewBox="0 0 600 340" role="img" aria-label="Lab network map. Select a host to filter the findings below." id="topo"></svg>
+<div class="cap" id="mapCap">Select a host to see its findings. Sample data from an isolated lab.</div>
+</div>
+</header>
+
+<section id="method">
+<h2>Methodology</h2>
+<p class="mut">Each phase has a clear pass condition, so progress is easy to verify.</p>
+<div class="tabs" role="tablist" id="tabs"></div>
+<div class="panel" id="phase" role="tabpanel"></div>
+</section>
+
+<section id="pipeline">
+<h2>The automation: Nmap XML to vulnerability table</h2>
+<p class="mut">A short script reads every open service version from the scan, queries the local Exploit-DB copy, and prints one line per service. It turns a tool run into a repeatable pipeline.</p>
+<div class="split">
+<div>
+<pre><code>#!/usr/bin/env python3
+"""Nmap XML to searchsploit table. Run only on systems you own."""
+import json, subprocess, sys
+import xml.etree.ElementTree as ET
+
+def services(xml_path):
+    for host in ET.parse(xml_path).getroot().iter("host"):
+        ip = host.find("address").get("addr")
+        for p in host.iter("port"):
+            svc = p.find("service")
+            if svc is None or p.find("state").get("state") != "open":
+                continue
+            q = " ".join(filter(None, [svc.get("product"), svc.get("version")]))
+            if q:
+                yield ip, p.get("portid"), q
+
+def searchsploit(q):
+    r = subprocess.run(["searchsploit", "--json", q],
+                       capture_output=True, text=True)
+    return json.loads(r.stdout).get("RESULTS_EXPLOIT", [])
+
+for ip, port, q in services(sys.argv[1]):
+    print(f"{ip}:{port} | {q} | {len(searchsploit(q))} public exploit(s)")</code></pre>
+</div>
+<div>
+<pre><code><span class="tag">$ nmap -sV -oX lab.xml 192.168.56.0/24</span>
+<span class="tag">$ python3 map_vulns.py lab.xml</span>
+<span class="out">192.168.56.20:21  | vsftpd 2.3.4       | sample
+192.168.56.20:139 | Samba smbd 3.0.20  | sample
+192.168.56.20:22  | OpenSSH 4.7p1      | sample
+192.168.56.10:80  | Apache httpd 2.4.18| sample
+192.168.56.30:23  | BusyBox telnetd    | sample</span></code></pre>
+<p class="mut" style="font-size:.88rem">Illustrative output. Exploit counts come from your own searchsploit database at run time.</p>
+</div>
+</div>
+</section>
+
+<section id="live">
+<h2>Live scan</h2>
+<div id="liveStatic" hidden><p class="mut">This copy is running in static mode, so it cannot run scans. To scan your lab for real, run <span class="mono">node server.js</span> on your Kali or lab machine and open <span class="mono">http://127.0.0.1:3000</span>. You can still analyse an exported Nmap file below.</p></div>
+<div id="liveApp" hidden>
+<p class="mut">The server runs Nmap on your lab machine, maps each service version to public exploits with searchsploit, and streams progress here. Only private address ranges are accepted.</p>
+<div class="chips" id="tools"></div>
+<div class="row"><div><label for="tgt">Target (private IPv4 or CIDR, for example 192.168.56.0/24)</label><input type="text" id="tgt" value="192.168.56.0/24" autocomplete="off" spellcheck="false"></div>
+<div><label for="prof">Profile</label><select id="prof"><option value="quick">Quick (top 100 ports, light versions)</option><option value="standard">Standard (top 1000 ports, versions)</option><option value="discovery">Discovery only (live hosts)</option></select></div></div>
+<label class="auth"><input type="checkbox" id="auth"><span>I own this network or have written permission to test it.</span></label>
+<div class="btns"><button type="button" id="bStart">Start scan</button><button type="button" id="bDemo">Run demo (dummy data)</button></div>
+<p id="liveMsg" role="status" class="mut"></p>
+<pre id="liveLog" hidden></pre>
+<h3 style="font-size:1.1rem;margin-top:18px">Scan history</h3>
+<ul class="hist" id="hist"></ul>
+</div>
+</section>
+
+<section id="analyse">
+<h2>Analyse your own scan</h2>
+<p class="mut">Nmap, Wireshark and Angry IP Scanner are desktop tools, so they run on your lab machine (Kali works well). This page takes their output and analyses it in your browser on a background thread. Nothing is uploaded to a server.</p>
+<pre><code><span class="tag">$ nmap -sV -oX lab.xml 192.168.56.0/24</span></code></pre>
+<label class="drop" id="drop"><input type="file" id="file" accept=".xml,text/xml,application/xml"><strong>Drop lab.xml here or choose a file</strong><br><span class="mut">Showing: <span id="scanLabel"></span></span></label>
+<div class="btns"><button type="button" id="bSample">Load sample scan</button><button type="button" id="bJson">Export JSON</button><button type="button" id="bCsv">Export CSV</button><button type="button" id="bReset">Reset</button></div>
+<progress id="prog" hidden></progress>
+<p id="status" role="status" class="mut"></p>
+<div class="stats" id="stats"></div>
+<p class="mut" style="font-size:.88rem">The built-in analyser applies nine curated checks so it works offline. For the full Exploit-DB, run <span class="mono">map_vulns.py</span> from the download on the same file.</p>
+</section>
+
+<section id="findings">
+<h2>Findings</h2>
+<p class="mut">Results for the scan loaded above. Select a row for the CIA impact and the fix.</p>
+<div class="filters" id="filters" role="group" aria-label="Filter by severity"></div>
+<div class="tw"><table><thead><tr><th>Host</th><th>Service</th><th>Issue</th><th>Severity</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="detail" id="detail" aria-live="polite"></div>
+</section>
+
+<section id="transport">
+<h2>Transport layer evidence in Wireshark</h2>
+<p class="mut">The same port, seen three ways. This is how Nmap decides what is open, and what a defender can spot.</p>
+<div class="split">
+<div class="tw"><table class="pk"><thead><tr><th>Scan</th><th>Packets</th><th>Result</th></tr></thead><tbody>
+<tr><td>Connect (-sT)</td><td>SYN, SYN/ACK, ACK, then RST</td><td>Open, logged by the service</td></tr>
+<tr><td>SYN (-sS)</td><td>SYN, SYN/ACK, RST</td><td>Open, handshake never completes</td></tr>
+<tr><td>Closed port</td><td>SYN, RST/ACK</td><td>Closed</td></tr>
+<tr><td>Filtered port</td><td>SYN, no reply</td><td>Dropped by a firewall</td></tr></tbody></table></div>
+<div>
+<p>Display filter used to isolate the scan:</p>
+<pre><code>ip.src == 192.168.56.101 &amp;&amp; tcp.flags.syn == 1 &amp;&amp; tcp.flags.ack == 0</code></pre>
+<p class="mut" style="font-size:.9rem">A burst of SYNs to many ports from one source is the signature an intrusion detection rule would look for.</p>
+</div>
+</div>
+</section>
+
+<section id="recon">
+<h2>Recon before any packet is sent</h2>
+<div class="split">
+<div><h3>Passive: Shodan</h3><p class="mut">Search my own public IP and domain to learn what the internet already knows, with no traffic sent to the target. For a home lab behind NAT the expected result is nothing exposed, and that result goes in the report.</p></div>
+<div><h3>Active: Angry IP Scanner and Nmap</h3><p class="mut">Angry IP gives a fast list of live hosts. Nmap then fingerprints services and versions on those hosts only. Scope is written down first: an isolated host-only network of lab virtual machines.</p></div>
+</div>
+</section>
+
+<footer>
+<button class="theme" id="theme" type="button">Switch theme</button>
+<p>All scanning was done on an isolated lab I own. Never scan systems without written permission.</p>
+<p>Until you load your own scan, the findings shown come from a dummy sample.</p>
+</footer>
+</main>
+
+<script>
+var P=[
+{n:"Passive recon",t:"Shodan footprinting",d:"Learn what is publicly visible about the lab before touching it.",b:["Search own IP and domain on Shodan","Record exposed ports, banners and certificates","Define scope and rules in writing"],p:"Pass: documented external footprint and scope sheet"},
+{n:"Host discovery",t:"Angry IP Scanner and Nmap ping sweep",d:"Build the inventory of live machines on the lab subnet.",b:["Sweep 192.168.56.0/24 with Angry IP","Cross-check with nmap -sn","Label each host by role"],p:"Pass: host inventory matches the known lab devices"},
+{n:"Service scan",t:"Nmap version detection",d:"Fingerprint open ports, services and versions, saved as XML for the pipeline.",b:["nmap -sV -O -oX lab.xml","Compare SYN and connect scans","Capture the traffic in Wireshark"],p:"Pass: lab.xml produced and packet capture saved"},
+{n:"Vulnerability analysis",t:"searchsploit pipeline",d:"Map every detected version to public exploits with the Python script.",b:["Run map_vulns.py on lab.xml","Review each match manually in Exploit-DB","Rate severity and remove false positives"],p:"Pass: vulnerability table with manual verification notes"},
+{n:"Report",t:"CIA triad remediation",d:"Explain each risk in business terms and give a fix.",b:["Tag each finding Confidentiality, Integrity or Availability","Write a prioritised remediation plan","Re-scan to confirm fixes"],p:"Pass: report delivered and re-scan shows reduced attack surface"}];
+var SEV={Critical:3,High:2,Medium:1},sevCol={Critical:"var(--crit)",High:"var(--high)",Medium:"var(--med)"};
+var DATA={label:"",time:"",hosts:[],F:[]},selHost=null,selSev="All",selRow=null,KEY="ass.v1";
+var SAMPLE=['<?xml version="1.0"?><nmaprun scanner="nmap">',
+'<host><status state="up"/><address addr="192.168.56.10" addrtype="ipv4"/><hostnames><hostname name="web-server"/></hostnames><ports>',
+'<port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="7.2p2"/></port>',
+'<port protocol="tcp" portid="80"><state state="open"/><service name="http" product="Apache httpd" version="2.4.18"/></port></ports></host>',
+'<host><status state="up"/><address addr="192.168.56.20" addrtype="ipv4"/><hostnames><hostname name="legacy-server"/></hostnames><ports>',
+'<port protocol="tcp" portid="21"><state state="open"/><service name="ftp" product="vsftpd" version="2.3.4"/></port>',
+'<port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="4.7p1"/></port>',
+'<port protocol="tcp" portid="80"><state state="open"/><service name="http" product="Apache httpd" version="2.2.8"/></port>',
+'<port protocol="tcp" portid="139"><state state="open"/><service name="netbios-ssn" product="Samba smbd" version="3.0.20"/></port>',
+'<port protocol="tcp" portid="445"><state state="open"/><service name="microsoft-ds" product="Samba smbd" version="3.0.20"/></port></ports></host>',
+'<host><status state="up"/><address addr="192.168.56.30" addrtype="ipv4"/><hostnames><hostname name="ip-camera"/></hostnames><ports>',
+'<port protocol="tcp" portid="23"><state state="open"/><service name="telnet" product="BusyBox telnetd"/></port></ports></host>',
+'<host><status state="up"/><address addr="192.168.56.40" addrtype="ipv4"/><ports><port protocol="tcp" portid="443"><state state="open"/><service name="https" product="nginx" version="1.25.3"/></port></ports></host>',
+'</nmaprun>'].join("");
+function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function $(i){return document.getElementById(i)}
+
+function analyse(services,post){
+ function v(x){return String(x||"").match(/\d+/g)||[]}
+ function cmp(a,b){a=v(a);b=v(b);var n=Math.max(a.length,b.length);for(var i=0;i<n;i++){var x=+a[i]||0,y=+b[i]||0;if(x!==y)return x<y?-1:1}return 0}
+ var R=[
+ {id:"vsftpd",sev:"Critical",cia:"CIA",ref:"CVE-2011-2523",issue:"Backdoored release allows remote command execution",fix:"Upgrade vsftpd from a trusted source, disable anonymous login and block port 21 at the firewall.",t:function(s){return /vsftpd/.test(s.t)&&s.ver==="2.3.4"}},
+ {id:"samba",sev:"Critical",cia:"CIA",ref:"CVE-2007-2447",issue:"Username map script allows remote code execution",fix:"Upgrade Samba, restrict SMB to trusted hosts and disable guest access.",t:function(s){return /samba/.test(s.t)&&cmp(s.ver,"3.0.0")>=0&&cmp(s.ver,"3.0.26")<0}},
+ {id:"apache-trav",sev:"Critical",cia:"CI",ref:"CVE-2021-41773, CVE-2021-42013",issue:"Path traversal that can lead to remote code execution",fix:"Update Apache httpd to a current release immediately.",t:function(s){return /apache httpd/.test(s.t)&&(s.ver==="2.4.49"||s.ver==="2.4.50")}},
+ {id:"apache22",sev:"High",cia:"A",ref:"End of life",issue:"Unsupported 2.2 series with unpatched denial of service flaws",fix:"Move to a supported Apache 2.4 release and hide version banners.",t:function(s){return /apache httpd/.test(s.t)&&/^2\.2\./.test(s.ver)}},
+ {id:"telnet",sev:"High",cia:"C",ref:"Cleartext protocol",issue:"Telnet sends credentials in cleartext, visible in Wireshark",fix:"Disable telnet, use SSH, change default credentials and isolate the device on its own VLAN.",t:function(s){return s.n==="telnet"||/telnetd/.test(s.t)}},
+ {id:"apache24",sev:"Medium",cia:"CIA",ref:"Outdated build",issue:"Outdated build with security fixes available",fix:"Apply vendor updates and enable automatic security patching.",t:function(s){return /apache httpd/.test(s.t)&&/^2\.4\./.test(s.ver)&&cmp(s.ver,"2.4.58")<0&&s.ver!=="2.4.49"&&s.ver!=="2.4.50"}},
+ {id:"openssh",sev:"Medium",cia:"C",ref:"CVE-2018-15473",issue:"Older than 7.8: valid usernames can be enumerated",fix:"Upgrade OpenSSH, use key authentication and disable password login.",t:function(s){return /openssh/.test(s.t)&&!!s.ver&&cmp(s.ver,"7.8")<0}},
+ {id:"ftp",sev:"Medium",cia:"C",ref:"Cleartext protocol",issue:"FTP sends credentials and data in cleartext",fix:"Replace FTP with SFTP or FTPS.",t:function(s){return s.n==="ftp"}},
+ {id:"rdp",sev:"Medium",cia:"CA",ref:"Exposed service",issue:"Remote Desktop reachable on the network",fix:"Require Network Level Authentication and restrict access by firewall or VPN.",t:function(s){return s.n==="ms-wbt-server"}}];
+ var out={},total=services.length;
+ services.forEach(function(sv,i){
+  var s={n:String(sv.name||"").toLowerCase(),ver:String(sv.version||""),t:(String(sv.product||"")+" "+String(sv.name||"")).toLowerCase()};
+  R.forEach(function(r){if(r.t(s)){var base=(sv.product||sv.name)+(sv.version?" "+sv.version:""),k=sv.ip+"|"+r.id+"|"+base;
+   if(!out[k])out[k]={ip:sv.ip,base:base,ports:[],sev:r.sev,cia:r.cia,issue:r.issue,fix:r.fix,ref:r.ref};out[k].ports.push(sv.port)}});
+  post({type:"progress",done:i+1,total:total});
+ });
+ var list=Object.keys(out).map(function(k){var o=out[k];o.svc=o.base+" ("+o.ports.join("/")+")";return o});
+ var rk={Critical:3,High:2,Medium:1};
+ list.sort(function(a,b){return rk[b.sev]-rk[a.sev]||(a.ip<b.ip?-1:1)});
+ post({type:"done",findings:list});
+}
+function runAnalysis(svcs,onProg,onDone){
+ var finished=false;
+ function fallback(){if(finished)return;finished=true;analyse(svcs,function(m){if(m.type==="progress")onProg(m);else onDone(m.findings)})}
+ try{
+  var src="var analyse="+analyse.toString()+";onmessage=function(e){analyse(e.data,function(m){postMessage(m)})};";
+  var url=URL.createObjectURL(new Blob([src],{type:"text/javascript"})),w=new Worker(url);
+  w.onmessage=function(e){if(e.data.type==="progress")onProg(e.data);else if(!finished){finished=true;onDone(e.data.findings);w.terminate();URL.revokeObjectURL(url)}};
+  w.onerror=function(){w.terminate();fallback()};
+  w.postMessage(svcs);
+ }catch(err){fallback()}
+}
+function parseXml(t){
+ var d=new DOMParser().parseFromString(t,"application/xml");
+ if(d.querySelector("parsererror")||!d.documentElement||d.documentElement.nodeName!=="nmaprun")throw new Error("This is not an Nmap XML file. Re-run the scan with the -oX option.");
+ var hosts=[],svcs=[];
+ d.querySelectorAll("host").forEach(function(h){
+  var st=h.querySelector("status");if(st&&st.getAttribute("state")==="down")return;
+  var a=h.querySelector('address[addrtype="ipv4"]')||h.querySelector("address");if(!a)return;
+  var ip=a.getAttribute("addr"),hn=h.querySelector("hostname"),n=0;
+  h.querySelectorAll("ports > port").forEach(function(p){
+   var s=p.querySelector("state");if(!s||s.getAttribute("state")!=="open")return;
+   var sv=p.querySelector("service"),g=function(k){return sv?(sv.getAttribute(k)||""):""};
+   n++;svcs.push({ip:ip,port:p.getAttribute("portid"),name:g("name"),product:g("product"),version:g("version")});
+  });
+  hosts.push({id:"h"+hosts.length,ip:ip,name:hn?hn.getAttribute("name"):ip,open:n});
+ });
+ if(!hosts.length)throw new Error("No live hosts were found in this file.");
+ return{hosts:hosts,svcs:svcs};
+}
+function status(m,bad){var e=$("status");e.textContent=m;e.className=bad?"err":"mut"}
+function runScan(text,label,persist){
+ var p;try{p=parseXml(text)}catch(e){status(e.message,true);return}
+ var pr=$("prog");pr.hidden=false;pr.max=Math.max(p.svcs.length,1);pr.value=0;
+ status("Analysing "+p.svcs.length+" open services on a background thread.");
+ runAnalysis(p.svcs,function(m){pr.value=m.done},function(list){
+  var idOf={};p.hosts.forEach(function(h){idOf[h.ip]=h.id});
+  var F=list.map(function(r){return{h:idOf[r.ip],ip:r.ip,svc:r.svc,issue:r.issue,sev:r.sev,cia:r.cia,fix:r.fix,ref:r.ref}});
+  setData({label:label,time:new Date().toLocaleString(),hosts:p.hosts,F:F},persist);
+  pr.hidden=true;status("Done: "+p.hosts.length+" hosts, "+p.svcs.length+" open services, "+F.length+" findings.");
+ });
+}
+function worstR(id){var r=0;DATA.F.forEach(function(f){if(f.h===id&&SEV[f.sev]>r)r=SEV[f.sev]});return r}
+function worstC(id){var r=worstR(id);return r===3?sevCol.Critical:r===2?sevCol.High:r===1?sevCol.Medium:"var(--ok)"}
+function setData(d,persist){
+ DATA=d;selHost=null;selRow=null;selSev="All";
+ $("scanLabel").textContent=d.label+", "+d.time;
+ stats();drawMap();filters();rows();mapCap();
+ if(persist){try{localStorage.setItem(KEY,JSON.stringify(d))}catch(e){}}
+}
+function stats(){
+ var F=DATA.F,svc=DATA.hosts.reduce(function(a,h){return a+h.open},0),crit=F.filter(function(f){return f.sev==="Critical"}).length;
+ function c(l){return F.filter(function(f){return f.cia.indexOf(l)>-1}).length}
+ var cells=[[DATA.hosts.length,"Live hosts"],[svc,"Open services"],[F.length,"Findings"],[crit,"Critical"],[c("C"),"Confidentiality risks"],[c("I"),"Integrity risks"],[c("A"),"Availability risks"]];
+ $("stats").innerHTML=cells.map(function(x){return"<div><b>"+x[0]+"</b><span>"+x[1]+"</span></div>"}).join("");
+}
+function shown(){return DATA.hosts.slice().sort(function(a,b){return worstR(b.id)-worstR(a.id)||a.ip.localeCompare(b.ip,undefined,{numeric:true})}).slice(0,6)}
+function drawMap(){
+ var hs=shown(),H=Math.max(240,hs.length*60+20),cy=H/2,s=$("topo"),h="";
+ s.setAttribute("viewBox","0 0 600 "+H);
+ h+='<rect x="235" y="'+(cy-20)+'" width="90" height="40" fill="none" stroke="currentColor" stroke-width="1.5" rx="3" style="color:var(--mut)"/><text x="280" y="'+(cy+5)+'" text-anchor="middle" style="fill:var(--ink);font:500 11px var(--mono)">Lab switch</text>';
+ h+='<path class="edge" d="M150 '+cy+' H235"/>';
+ hs.forEach(function(x,i){var y=10+i*60;h+='<path class="edge" d="M325 '+cy+' C390 '+cy+' 380 '+(y+22)+' 430 '+(y+22)+'"/>'});
+ h+='<g><rect x="60" y="'+(cy-22)+'" width="90" height="44" rx="3" style="fill:var(--bg);stroke:var(--ok);stroke-width:2"/><text x="70" y="'+(cy-3)+'" style="fill:var(--ink);font:500 11px var(--mono)">Analyst VM</text><text x="70" y="'+(cy+12)+'" style="fill:var(--mut);font:10px var(--mono)">scanner</text></g>';
+ hs.forEach(function(x,i){var y=10+i*60,nm=x.name.length>20?x.name.slice(0,19)+"…":x.name;
+  h+='<g class="node" data-id="'+esc(x.id)+'" tabindex="0" role="button" aria-label="'+esc(x.name)+' '+esc(x.ip)+'"><rect x="430" y="'+y+'" width="160" height="44" rx="3" style="stroke:'+worstC(x.id)+'"/><text x="440" y="'+(y+19)+'">'+esc(nm)+'</text><text x="440" y="'+(y+34)+'" style="fill:var(--mut);font-size:10px">'+esc(x.ip)+' ('+x.open+' open)</text></g>'});
+ s.innerHTML=h;$("mapWrap").classList.add("go");
+ s.querySelectorAll(".node").forEach(function(n){var id=n.getAttribute("data-id");
+  function pick(){selHost=selHost===id?null:id;selRow=null;sync()}
+  n.addEventListener("click",pick);n.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();pick()}})});
+}
+function mapCap(){
+ var hn=selHost&&DATA.hosts.filter(function(x){return x.id===selHost})[0],extra=DATA.hosts.length>6?" Showing 6 of "+DATA.hosts.length+" hosts, highest risk first.":"";
+ $("mapCap").textContent=(hn?hn.name+" selected. Select it again to clear.":"Select a host to see its findings.")+extra;
+}
+function sync(){document.querySelectorAll(".node").forEach(function(n){n.classList.toggle("sel",n.getAttribute("data-id")===selHost)});mapCap();rows()}
+function rows(){
+ var t=$("rows"),h="";
+ DATA.F.forEach(function(f,i){if(selHost&&f.h!==selHost)return;if(selSev!=="All"&&f.sev!==selSev)return;
+  h+='<tr data-i="'+i+'" tabindex="0" class="'+(selRow===i?"sel":"")+'"><td class="mono">'+esc(f.ip)+'</td><td>'+esc(f.svc)+'</td><td>'+esc(f.issue)+'</td><td><span class="sev '+f.sev+'">'+f.sev+'</span></td></tr>'});
+ t.innerHTML=h||'<tr><td colspan="4" class="mut">No findings match. Clear the host or severity filter.</td></tr>';
+ t.querySelectorAll("tr[data-i]").forEach(function(r){function go(){selRow=+r.getAttribute("data-i");rows()}r.addEventListener("click",go);r.addEventListener("keydown",function(e){if(e.key==="Enter")go()})});
+ var d=$("detail");
+ if(selRow===null||!DATA.F[selRow]){d.innerHTML='<span class="mut">Select a finding to see its CIA impact and remediation.</span>';return}
+ var f=DATA.F[selRow];
+ d.innerHTML='<strong>'+esc(f.svc)+'</strong> <span class="mono mut">'+esc(f.ref)+'</span><div class="cia"><span class="'+(f.cia.indexOf("C")>-1?"on":"")+'">Confidentiality</span><span class="'+(f.cia.indexOf("I")>-1?"on":"")+'">Integrity</span><span class="'+(f.cia.indexOf("A")>-1?"on":"")+'">Availability</span></div><p style="margin:0"><strong>Fix:</strong> '+esc(f.fix)+'</p>';
+}
+function filters(){var f=$("filters"),h="";
+ ["All","Critical","High","Medium"].forEach(function(s){h+='<button type="button" aria-pressed="'+(s===selSev)+'" data-s="'+s+'">'+s+'</button>'});
+ f.innerHTML=h;f.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){selSev=b.getAttribute("data-s");filters();rows()})})}
+function tabs(i){var t=$("tabs"),h="";
+ P.forEach(function(p,k){h+='<button type="button" role="tab" aria-selected="'+(k===i)+'" data-k="'+k+'">'+(k+1)+'. '+p.n+'</button>'});
+ t.innerHTML=h;t.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){tabs(+b.getAttribute("data-k"))})});
+ var p=P[i];$("phase").innerHTML='<div><h3>'+p.t+'</h3><p class="mut">'+p.d+'</p><div class="pass">'+p.p+'</div></div><ul>'+p.b.map(function(x){return"<li>"+x+"</li>"}).join("")+'</ul>'}
+function dl(name,mime,text){var a=document.createElement("a"),u=URL.createObjectURL(new Blob([text],{type:mime}));a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},500)}
+function cell(x){x=String(x==null?"":x);if(/^[=+\-@]/.test(x))x="'"+x;return'"'+x.replace(/"/g,'""')+'"'}
+function readFile(f){
+ if(!f)return;if(f.size>8*1024*1024){status("That file is larger than 8 MB. Scan fewer hosts or split the file.",true);return}
+ var r=new FileReader();r.onload=function(){runScan(String(r.result),f.name,true)};r.onerror=function(){status("The file could not be read.",true)};r.readAsText(f);
+}
+$("theme").addEventListener("click",function(){var r=document.documentElement,dark=r.getAttribute("data-theme")?r.getAttribute("data-theme")==="dark":!window.matchMedia("(prefers-color-scheme: light)").matches;r.setAttribute("data-theme",dark?"light":"dark")});
+$("file").addEventListener("change",function(e){readFile(e.target.files[0]);e.target.value=""});
+var dz=$("drop");
+["dragenter","dragover"].forEach(function(n){dz.addEventListener(n,function(e){e.preventDefault();dz.classList.add("over")})});
+["dragleave","drop"].forEach(function(n){dz.addEventListener(n,function(e){e.preventDefault();dz.classList.remove("over")})});
+dz.addEventListener("drop",function(e){readFile(e.dataTransfer.files[0])});
+$("bSample").addEventListener("click",function(){runScan(SAMPLE,"Sample scan, dummy data",false)});
+$("bReset").addEventListener("click",function(){try{localStorage.removeItem(KEY)}catch(e){}runScan(SAMPLE,"Sample scan, dummy data",false)});
+$("bJson").addEventListener("click",function(){dl("attack-surface.json","application/json",JSON.stringify({label:DATA.label,time:DATA.time,hosts:DATA.hosts,findings:DATA.F},null,2))});
+$("bCsv").addEventListener("click",function(){var L=[["host","service","severity","issue","reference","cia","fix"].join(",")];DATA.F.forEach(function(f){L.push([f.ip,f.svc,f.sev,f.issue,f.ref,f.cia,f.fix].map(cell).join(","))});dl("attack-surface.csv","text/csv",L.join("\n"))});
+
+function api(path,opt){return fetch(path,opt).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Request failed");return j})})}
+function liveMsg(t,bad){var e=$("liveMsg");e.textContent=t;e.className=bad?"err":"mut"}
+function liveLog(t,reset){var l=$("liveLog");if(reset){l.textContent="";l.hidden=false;return}l.textContent=(l.textContent+t+"\n").split("\n").slice(-200).join("\n");l.scrollTop=l.scrollHeight}
+function loadScan(id,label){api("/api/scans/"+id).then(function(sc){if(!sc.result){liveMsg(sc.error||"That scan has no results.",true);return}
+ setData({label:(sc.demo?"Demo scan":"Live scan "+sc.target),time:new Date(sc.created).toLocaleString(),hosts:sc.result.hosts,F:sc.result.F},false);
+ liveMsg("Loaded "+(sc.demo?"demo scan":sc.target)+": "+sc.result.hosts.length+" hosts, "+sc.result.F.length+" findings.");$("findings").scrollIntoView({behavior:"smooth"})}).catch(function(e){liveMsg(e.message,true)})}
+function loadHist(){api("/api/scans").then(function(list){var u=$("hist");
+ u.innerHTML=list.length?list.map(function(x){return'<li><span>'+esc(x.demo?"Demo":x.target)+', '+esc(new Date(x.created).toLocaleString())+', '+esc(x.status)+(x.status==="done"?', '+x.findings+' findings':'')+'</span>'+(x.status==="done"?'<button type="button" data-o="'+esc(x.id)+'">Open</button>':'')+'<button type="button" data-d="'+esc(x.id)+'">Delete</button></li>'}).join(""):'<li class="mut">No scans yet. Run the demo to see the full flow.</li>';
+ u.querySelectorAll("[data-o]").forEach(function(b){b.addEventListener("click",function(){loadScan(b.getAttribute("data-o"))})});
+ u.querySelectorAll("[data-d]").forEach(function(b){b.addEventListener("click",function(){api("/api/scans/"+b.getAttribute("data-d"),{method:"DELETE",headers:{"X-Requested-With":"ass"}}).then(loadHist).catch(function(e){liveMsg(e.message,true)})})})}).catch(function(){})}
+function watch(id){var es=new EventSource("/api/scans/"+id+"/events");
+ es.onmessage=function(e){var m=JSON.parse(e.data);
+  if(m.type==="log")liveLog(m.text);
+  else if(m.type==="phase")liveMsg(m.text);
+  else if(m.type==="done"){es.close();$("bStart").disabled=$("bDemo").disabled=false;loadScan(id);loadHist()}
+  else if(m.type==="error"){es.close();$("bStart").disabled=$("bDemo").disabled=false;liveMsg(m.text,true);loadHist()}};
+ es.onerror=function(){es.close();$("bStart").disabled=$("bDemo").disabled=false}}
+function startScan(demo){
+ liveLog("",true);liveMsg("Starting...");$("bStart").disabled=$("bDemo").disabled=true;
+ api("/api/scans",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"ass"},body:JSON.stringify({target:$("tgt").value,profile:$("prof").value,authorized:$("auth").checked,demo:demo})})
+ .then(function(r){watch(r.id)}).catch(function(e){liveMsg(e.message,true);$("bStart").disabled=$("bDemo").disabled=false})}
+$("bStart").addEventListener("click",function(){startScan(false)});
+$("bDemo").addEventListener("click",function(){$("auth").checked=true;startScan(true)});
+api("/api/status").then(function(st){$("liveApp").hidden=false;
+ $("tools").innerHTML=[["nmap",st.nmap],["searchsploit",st.searchsploit]].map(function(x){return'<span class="chip">'+x[0]+': '+esc(x[1]||"not installed")+'</span>'}).join("");loadHist()})
+ .catch(function(){$("liveStatic").hidden=false});
+tabs(0);
+(function(){var saved=null;try{saved=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+ if(saved&&Array.isArray(saved.hosts)&&Array.isArray(saved.F)){setData(saved,false);status("Restored your last scan from this browser.")}
+ else runScan(SAMPLE,"Sample scan, dummy data",false)})();
+</script>
+</body>
+</html>
